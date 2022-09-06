@@ -6,12 +6,18 @@ from db import insert_items, check_uniq_id
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException
-from send_message import send_message, users_id_list
+from send_message import send_msg, users_id_list
+from urllib.parse import urlparse
+import sys
 
 
-searchTags = ['труба', 'квадрат', 'швеллер']
-stopwords = ['пэ', 'полиэтилен', 'полипропилен', 'отруб', 'пластмасс']
-goodwords = ['алюмин', 'cтал', 'мед', 'латун', 'бронз', 'титан']
+searchTags = ['труба', 'квадрат', 'швеллер', 'арматура', 'двутавр', 'пруток', 'лента', 'лист', 'отвод', 'уголок',
+              'фланец', 'шестигранник', 'рельсы']
+stopwords = ['пэ ', 'полиэтилен', 'полипропилен', 'отруб', 'пластмасс', 'сантех', 'канализ', 'полимер']
+goodwords = {'алюмин': 'алюминиевая', 'стал': 'стальная', 'мед': 'медная', 'латун': 'латунная', 'бронз': 'бронзовая',
+             'титан': 'титановая', 'профильн': 'профильная', 'желез': 'железная'}
+
+
 currency_dict = {'₽': 'RUB', '€': 'EURO', '$': 'USD'}
 sortBy = 'Дате+размещения'
 uniq = 0
@@ -27,6 +33,7 @@ wait = WebDriverWait(driver, 10)
 
 
 def check_exists_by_xpath(fromdriver, xpath):
+    # Проверка на наличие элемента
     try:
         fromdriver.find_element(By.XPATH, xpath)
     except NoSuchElementException:
@@ -34,24 +41,29 @@ def check_exists_by_xpath(fromdriver, xpath):
     return True
 
 
-def parse_item(items, searchTag, page=1):
+def parse_item(items, searchtag, page=1):
     global uniq
     print(f"Результатов поиска на странице {page}: {len(items)}")
     for i in items:
+        item_link = i.find_element(By.XPATH, ".//div[@class='registry-entry__header-mid__number']/a").get_attribute(
+            "href")
+        item_domen = urlparse(item_link).scheme + "://" + urlparse(item_link).netloc
+        item_link_short = item_link[len(item_domen):]
+        print(item_link)
+
         item_id = (i.find_element(By.XPATH, ".//div[@class='registry-entry__header-mid__number']/a").text)[2:]
         if check_uniq_id(item_id) == True:
             uniq += 1
-            print(f"Подряд нашел добавленных в БД: {uniq}")
+            print(f"Нашел в добавленных в БД: {uniq}")
             if uniq >= 5:
                 return
             continue
-        uniq = 0
-        item_link = i.find_element(By.XPATH, ".//div[@class='registry-entry__header-mid__number']/a").get_attribute(
-            "href")
-        item_link_short = item_link[22:]
+        item_tags = [searchtag]
+        item_law = i.find_element(By.XPATH, ".//div[@class='col-9 p-0 registry-entry__header-top__title text-truncate']").text
+        item_law_short = str(item_law[:item_law.find('-ФЗ')]) + '-ФЗ'
         item_status = i.find_element(By.XPATH, ".//div[@class='registry-entry__header-mid__title text-normal']").text
         item_object = i.find_element(By.XPATH, ".//div[@class='registry-entry__body-value']").text
-        item_organization = i.find_element(By.XPATH, ".//div[@class='registry-entry__body-href']/a").text
+        item_organization = i.find_element(By.XPATH, ".//div[@class='registry-entry__body-href']/a").text.capitalize()
         if check_exists_by_xpath(i, ".//div[@class='price-block__title' and contains(text(),'Начальная цена')]"):
             item_price_full = i.find_element(By.XPATH,
                                              ".//div[@class='price-block__title' and contains(text(),'Начальная цена')]/following-sibling::div[@class='price-block__value']").text
@@ -75,71 +87,59 @@ def parse_item(items, searchTag, page=1):
         original_window = driver.current_window_handle
         i.find_element(By.XPATH, ".//div[@class='registry-entry__header-mid__number']/a").click()
         wait.until(EC.number_of_windows_to_be(2))
-
         for window_handle in driver.window_handles:
             if window_handle != original_window:
                 driver.switch_to.window(window_handle)
                 time.sleep(2)
                 break
-
-        print(item_link)
-
         if check_exists_by_xpath(driver,
                                  ".//span[@class='section__title' and contains(text(),'Регион')]"):
             item_region = driver.find_element(By.XPATH,
-                                              ".//span[@class='section__title' and contains(text(),'Регион')]/following-sibling::span[@class='section__info']").text
+                                              ".//span[@class='section__title' and contains(text(),'Регион')]/following-sibling::span[@class='section__info']").text.capitalize()
         elif check_exists_by_xpath(driver, ".//div[contains(text(),'Почтовый адрес')]"):
             item_region = driver.find_element(By.XPATH,
-                                              ".//div[contains(text(),'Почтовый адрес')]/following-sibling::div").text
+                                              ".//div[contains(text(),'Почтовый адрес')]/following-sibling::div").text.capitalize()
         else:
             item_region = None
 
         have_stopword = False
         have_goodword = False
+
+        # Проверка на наличие вкладки "Список лотов" и "Информация об объекте закупки"
         spisok_lotov_tab = check_exists_by_xpath(driver, '//a[contains(text(),"Список лотов")]')
         information_about_object = check_exists_by_xpath(driver,
                                                          '//h2[contains(text(),"Информация об объекте закупки")]')
-
-        if spisok_lotov_tab:
-            print("Есть вкладка 'Список лотов'")
-            driver.find_element(By.XPATH, "//a[contains(text(),'Список лотов')]").click()
-            time.sleep(0.5)
-            table_spisok_lotov = driver.find_element(By.XPATH, "//div[@class='card-common-content']")
-            for goodword in goodwords:
-                if str(table_spisok_lotov.text).find(goodword):
-                    print("Нашел гудслово1")
+        if information_about_object:
+            information_about_object_table = driver.find_element(By.XPATH, "//h2[contains(text(),'Информация об "
+                                                                           "объекте закупки')]/following-sibling::div")
+            for goodword in goodwords.keys():
+                if goodword in information_about_object_table.text.lower():
                     have_goodword = True
-                    break
+                    item_tags.append(goodwords[goodword])
             for stopword in stopwords:
-                if check_exists_by_xpath(table_spisok_lotov, ".//*[contains(text(),'" + stopword + "')]"):
-                    print("Нашел стопслово1")
+                if stopword in information_about_object_table.text.lower():
                     have_stopword = True
                     break
 
-        elif information_about_object:
-            print("Есть таблица 'Информация об объекте закупки'")
-            information_about_object_table = driver.find_element(By.XPATH, "//h2[contains(text(),'Информация об "
-                                                                           "объекте закупки')]/following-sibling::div")
-            for goodword in goodwords:
-                if str(information_about_object_table.text).find(goodword):
-                    print("Нашел гудслово2")
+        elif spisok_lotov_tab:
+            driver.find_element(By.XPATH, "//a[contains(text(),'Список лотов')]").click()
+            table_spisok_lotov = driver.find_element(By.XPATH, "//div[@class='card-common-content']")
+            for goodword in goodwords.keys():
+                if goodword in table_spisok_lotov.text.lower():
                     have_goodword = True
-                    break
+                    item_tags.append(goodwords[goodword])
             for stopword in stopwords:
-                if check_exists_by_xpath(information_about_object_table, ".//*[contains(text(),'" + stopword + "')]"):
-                    print("Нашел стопслово2")
+                if stopword in table_spisok_lotov.text.lower():
                     have_stopword = True
                     break
         else:
-            print("Нет спец блоков")
-            for goodword in goodwords:
-                if str(item_object).find(goodword):
-                    print("Нашел гудслово3")
-                    have_goodword = True
-                    break
+            item_object_low = item_object.lower()
+            for goodword in goodwords.keys():
+                if goodword in item_object_low:
+                    item_tags.append(goodwords[goodword])
+                    have_stopword = True
             for stopword in stopwords:
-                if str(item_object).find(stopword):
-                    print("Нашел стопслово3")
+                if stopword in item_object_low:
                     have_stopword = True
                     break
 
@@ -148,14 +148,24 @@ def parse_item(items, searchTag, page=1):
             driver.switch_to.window(original_window)
             continue
         elif have_goodword:
-            print("Отправка в БД")
+            # Отправка в БД
+            item_publication_date = datetime.datetime.now()
             insert_items(item_id, item_status, item_object, item_organization, item_price_int, item_price_int,
-                         item_price_cur, item_start_date_obj, item_finish_date_obj, item_link_short, [searchTag],
-                         item_region)
-
+                         item_price_cur, item_start_date_obj, item_finish_date_obj, item_link_short, item_tags,
+                         item_region, item_publication_date, item_domen, item_law_short)
+            # Отправка в Telegram
             print("Отправка в телегу")
-            for user in users_id_list:
-                send_message(user, f"{item_link}")
+
+            tg_msg = f"<b>Тендер:</b> № {item_id}\n" \
+                     f"<b>Закон:</b> {item_law_short}"
+            if 'item_price_full' in locals():
+                tg_msg += '\n<b>Начальная цена:</b> {:,.2f} {}'.format(item_price_int, item_price_full[-1:]).replace(',', ' ')
+            tg_msg += f"\n<b>Объект закупки:</b> {item_object if len(item_object)<100 else item_object[:100] + '...'}"
+            if 'item_finish_date' in locals():
+                tg_msg += f"\n<b>Окончание подачи заявок:</b> {item_finish_date}"
+            tg_msg += f"\n<a href='https://metalmarket.pro/tenders'>Ссылка на тендеры</a>"
+
+            send_msg(tg_msg)
 
             driver.close()
             driver.switch_to.window(original_window)
@@ -167,13 +177,13 @@ def parse_item(items, searchTag, page=1):
 
 
 def parse_page():
-    for searchTag in searchTags:
-        url = f"https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=поставка+{searchTag}&morphology=on" \
+    for searchtag in searchTags:
+        url = f"https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=поставка+{searchtag}&morphology=on" \
               f"&search-filter={sortBy}&sortDirection=false&recordsPerPage=_50&af=on&ca=on"
 
         try:
             driver.get(url)
-            print(f"Ищем: {searchTag}")
+            print(f"Ищем: {searchtag}")
 
             pages = driver.find_elements(By.XPATH, "//div[@class='paginator align-self-center m-0']/ul/li/a")
             last_page_num = int(pages[-1].get_attribute("data-pagenumber"))
@@ -183,12 +193,12 @@ def parse_page():
                 print(f'Переход на страницу {url}&pageNumber={page}')
                 if page == 1:
                     items = driver.find_elements(By.XPATH, "//div[@class='search-registry-entrys-block']/div")
-                    parse_item(items, searchTag)
+                    parse_item(items, searchtag)
                 else:
                     driver.get(f"{url}&pageNumber={page}")
                     time.sleep(5)
                     items = driver.find_elements(By.XPATH, "//div[@class='search-registry-entrys-block']/div")
-                    parse_item(items, searchTag, page)
+                    parse_item(items, searchtag, page)
                 if uniq >= 5:
                     return
         except Exception as ex:

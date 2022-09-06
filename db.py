@@ -1,7 +1,5 @@
-from sqlalchemy import create_engine, insert, inspect, table, column, Column, String
+from sqlalchemy import create_engine, insert, table, column
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql.expression import exists
-
 
 
 DB_SETTINGS = {
@@ -29,6 +27,9 @@ itemsTab = table('tenders',
                  column('tags'),
                  column('start_price'),
                  column('region'),
+                 column('publ_date'),
+                 column('domen'),
+                 column('law'),
                  )
 
 Session = sessionmaker(bind=engine)
@@ -41,7 +42,8 @@ def check_uniq_id(id_t):
     return check
 
 
-def insert_items(item_id, status, description, org, price, start_price, currency, start_date, end_date, short_url, tags, region):
+def insert_items(item_id, status, description, org, price, start_price, currency, start_date, end_date, short_url, tags,
+                 region, publ_date, domen, law):
     ins = insert(itemsTab)
     r = conn.execute(ins,
                      item_id=item_id,
@@ -55,7 +57,10 @@ def insert_items(item_id, status, description, org, price, start_price, currency
                      end_date=end_date,
                      short_url=short_url,
                      tags=tags,
-                     region=region
+                     region=region,
+                     publ_date=publ_date,
+                     domen=domen,
+                     law=law
                      )
 
 

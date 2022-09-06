@@ -1,10 +1,17 @@
 import requests
-import telegram_auth
+from config import token
 
-TOKEN = telegram_auth.token
+
+TOKEN = token
 URL = 'https://api.telegram.org/bot'
+users_id_list = [-1001342407725]
 
-users_id_list = [448732321]
 
-def send_message(chat_id, text):
-    requests.get(f'{URL}{TOKEN}/sendMessage?chat_id={chat_id}&text={text}')
+def send_msg(text):
+    url = f'https://api.telegram.org/bot{TOKEN}/sendMessage'
+    params = {
+        'chat_id': users_id_list[0],
+        'parse_mode': 'HTML',
+        'text': text
+    }
+    res = requests.get(url, params=params)
