@@ -1,17 +1,9 @@
 from sqlalchemy import create_engine, insert, table, column
 from sqlalchemy.orm import sessionmaker
+from config import host, port, database, user, password
 
 
-DB_SETTINGS = {
-    'host': '213.189.221.184',
-    'port': '5432',
-    'database': 'metallsite',
-    'user': 'metallsite',
-    'password': 'EyPu{4L}5zhHT~VtC8x~XniK8'
-}
-
-engine = create_engine(f"postgresql+psycopg2://{DB_SETTINGS['user']}:{DB_SETTINGS['password']}@{DB_SETTINGS['host']}:"
-                       f"{DB_SETTINGS['port']}/{DB_SETTINGS['database']}", echo=True)
+engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}", echo=True)
 conn = engine.connect()
 
 itemsTab = table('tenders',
