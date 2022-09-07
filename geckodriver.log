@@ -3878,3 +3878,15 @@ Read port: 58788
 [GFX1-]: RenderCompositorSWGL failed mapping default framebuffer, no dt
 console.warn: SearchSettings: "get: No settings file exists, new profile?" (new NotFoundError("Could not open the file at C:\\Users\\qwert\\AppData\\Local\\Temp\\rust_mozprofile0Xw74A\\search.json.mozlz4", (void 0)))
 DevTools listening on ws://localhost:58777/devtools/browser/042c71e5-6481-4177-ab00-041de464f0cf
+1662546590196	geckodriver	INFO	Listening on 127.0.0.1:59231
+1662546593231	mozrunner::runner	INFO	Running command: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" "--marionette" "-headless" "--remote-debugging-port" "59232" "--remote-allow-hosts" "localhost" "-no-remote" "-profile" "C:\\Users\\qwert\\AppData\\Local\\Temp\\rust_mozprofileSAoWuk"
+*** You are running in headless mode.
+1662546593581	Marionette	INFO	Marionette enabled
+1662546593586	Marionette	INFO	Listening on port 59241
+WebDriver BiDi listening on ws://localhost:59232
+Read port: 59241
+1662546593814	RemoteAgent	WARN	TLS certificate errors will be ignored for this session
+[GFX1-]: RenderCompositorSWGL failed mapping default framebuffer, no dt
+console.warn: SearchSettings: "get: No settings file exists, new profile?" (new NotFoundError("Could not open the file at C:\\Users\\qwert\\AppData\\Local\\Temp\\rust_mozprofileSAoWuk\\search.json.mozlz4", (void 0)))
+DevTools listening on ws://localhost:59232/devtools/browser/20ef365a-7c98-4489-b9e3-5932975d5909
+JavaScript error: , line 0: NS_ERROR_NOT_AVAILABLE

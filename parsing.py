@@ -184,7 +184,7 @@ def parse_page():
     for goodword in goodwords:
         for searchtag in searchTags:
             url = f"https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=поставка+{searchtag}+{goodword}" \
-                  f"&morphology=on&search-filter={sortBy}&sortDirection=false&recordsPerPage=_50&af=on&ca=on"
+                  f"&morphology=on&search-filter={sortBy}&sortDirection=false&recordsPerPage=_50&af=on"
 
             try:
                 driver.get(url)
