@@ -162,18 +162,14 @@ def parse_item(items, searchtag, page=1):
                 tg_msg += '\n<b>Начальная цена:</b> {:,.2f} {}'.format(item_price_int, item_price_full[-1:]).replace(',', ' ')
             except:
                 pass
-            # if 'item_price_full' in locals():
-            #     tg_msg += '\n<b>Начальная цена:</b> {:,.2f} {}'.format(item_price_int, item_price_full[-1:]).replace(',', ' ')
             tg_msg += f"\n<b>Объект закупки:</b> {item_object if len(item_object)<100 else item_object[:100] + '...'}"
-            # if 'item_finish_date' in locals():
-            #     tg_msg += f"\n<b>Окончание подачи заявок:</b> {item_finish_date}"
             try:
                 tg_msg += f"\n<b>Окончание подачи заявок:</b> {item_finish_date}"
             except:
                 pass
             tg_msg += f"\n<a href='https://metalmarket.pro/tenders'>Ссылка на тендеры</a>"
 
-            # send_msg(tg_msg)
+            send_msg(tg_msg)
 
             driver.close()
             driver.switch_to.window(original_window)
