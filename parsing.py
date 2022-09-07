@@ -6,14 +6,14 @@ from db import insert_items, check_uniq_id
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException
-from send_message import send_msg, users_id_list
+from send_message import send_msg
 from urllib.parse import urlparse
-import sys
 
 
-searchTags = ['труба', 'квадрат', 'швеллер', 'арматура', 'двутавр', 'пруток', 'лента', 'лист', 'отвод', 'уголок',
+searchTags = ['труба', 'швеллер', 'арматура', 'двутавр', 'пруток', 'лента', 'лист', 'отвод', 'уголок',
               'фланец', 'шестигранник', 'рельсы']
-stopwords = ['пэ ', 'полиэтилен', 'полипропилен', 'отруб', 'пластмасс', 'сантех', 'канализ', 'полимер']
+stopwords = ['пэ ', 'полиэтилен', 'полипропилен', 'отруб', 'пластмасс', 'сантех', 'канализ', 'полимер', 'канцеляр',
+             'медиц']
 goodwords = {'алюмин': 'алюминиевая', 'стал': 'стальная', 'мед': 'медная', 'латун': 'латунная', 'бронз': 'бронзовая',
              'титан': 'титановая', 'профильн': 'профильная', 'желез': 'железная'}
 
@@ -154,18 +154,26 @@ def parse_item(items, searchtag, page=1):
                          item_price_cur, item_start_date_obj, item_finish_date_obj, item_link_short, item_tags,
                          item_region, item_publication_date, item_domen, item_law_short)
             # Отправка в Telegram
-            print("Отправка в телегу")
+            print("Отправка")
 
             tg_msg = f"<b>Тендер:</b> № {item_id}\n" \
                      f"<b>Закон:</b> {item_law_short}"
-            if 'item_price_full' in locals():
+            try:
                 tg_msg += '\n<b>Начальная цена:</b> {:,.2f} {}'.format(item_price_int, item_price_full[-1:]).replace(',', ' ')
+            except:
+                pass
+            # if 'item_price_full' in locals():
+            #     tg_msg += '\n<b>Начальная цена:</b> {:,.2f} {}'.format(item_price_int, item_price_full[-1:]).replace(',', ' ')
             tg_msg += f"\n<b>Объект закупки:</b> {item_object if len(item_object)<100 else item_object[:100] + '...'}"
-            if 'item_finish_date' in locals():
+            # if 'item_finish_date' in locals():
+            #     tg_msg += f"\n<b>Окончание подачи заявок:</b> {item_finish_date}"
+            try:
                 tg_msg += f"\n<b>Окончание подачи заявок:</b> {item_finish_date}"
+            except:
+                pass
             tg_msg += f"\n<a href='https://metalmarket.pro/tenders'>Ссылка на тендеры</a>"
 
-            send_msg(tg_msg)
+            # send_msg(tg_msg)
 
             driver.close()
             driver.switch_to.window(original_window)
@@ -177,35 +185,39 @@ def parse_item(items, searchtag, page=1):
 
 
 def parse_page():
-    for searchtag in searchTags:
-        url = f"https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=поставка+{searchtag}&morphology=on" \
-              f"&search-filter={sortBy}&sortDirection=false&recordsPerPage=_50&af=on&ca=on"
+    for goodword in goodwords:
+        for searchtag in searchTags:
+            url = f"https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=поставка+{searchtag}+{goodword}" \
+                  f"&morphology=on&search-filter={sortBy}&sortDirection=false&recordsPerPage=_50&af=on&ca=on"
 
-        try:
-            driver.get(url)
-            print(f"Ищем: {searchtag}")
-
-            pages = driver.find_elements(By.XPATH, "//div[@class='paginator align-self-center m-0']/ul/li/a")
-            last_page_num = int(pages[-1].get_attribute("data-pagenumber"))
-            print(f"Всего страниц: {last_page_num}")
-
-            for page in range(1, last_page_num + 1):
-                print(f'Переход на страницу {url}&pageNumber={page}')
-                if page == 1:
-                    items = driver.find_elements(By.XPATH, "//div[@class='search-registry-entrys-block']/div")
-                    parse_item(items, searchtag)
+            try:
+                driver.get(url)
+                print(f"Ищем: {searchtag}")
+                if check_exists_by_xpath(driver, "//div[@class='paginator align-self-center m-0']/ul/li/a"):
+                    pages = driver.find_elements(By.XPATH, "//div[@class='paginator align-self-center m-0']/ul/li/a")
+                    last_page_num = int(pages[-1].get_attribute("data-pagenumber"))
                 else:
-                    driver.get(f"{url}&pageNumber={page}")
-                    time.sleep(5)
-                    items = driver.find_elements(By.XPATH, "//div[@class='search-registry-entrys-block']/div")
-                    parse_item(items, searchtag, page)
-                if uniq >= 5:
-                    return
-        except Exception as ex:
-            print(ex)
-        finally:
-            print(20 * '-')
-            print('Парсинг завершен')
-            print(20 * '-')
-            driver.close()
-            driver.quit()
+                    last_page_num = 1
+                print(f"Всего страниц: {last_page_num}")
+
+                for page in range(1, last_page_num + 1):
+                    print(f'Переход на страницу {url}&pageNumber={page}')
+                    if page == 1:
+                        items = driver.find_elements(By.XPATH, "//div[@class='search-registry-entrys-block']/div")
+                        parse_item(items, searchtag)
+                    else:
+                        driver.get(f"{url}&pageNumber={page}")
+                        time.sleep(5)
+                        items = driver.find_elements(By.XPATH, "//div[@class='search-registry-entrys-block']/div")
+                        parse_item(items, searchtag, page)
+                    if uniq >= 5:
+                        break
+            except Exception as ex:
+                print(ex)
+            finally:
+                print(20 * '-')
+                print(f'Парсинг ключа {searchtag} завершен')
+                print(20 * '-')
+    print(f'Парсинг завершен')
+    driver.close()
+    driver.quit()
